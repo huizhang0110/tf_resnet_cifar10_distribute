@@ -95,10 +95,12 @@ def res_block_low(x, n_in, n_out, subsample, is_training, scope="res_block"):
 
         y = batch_norm(y, n_out, is_training, scope="bn_1")
         y = tf.nn.relu(y, name="relu_1")
+
         y = conv2d(y, n_out, n_out, 3, 1, "SAME", True, scope="conv_2")
         y = batch_norm(y, n_out, is_training, scope="bn_2")
         y = y + shortcut
         y = tf.nn.relu(y, name="relu_2")
+
     return y
 
 
@@ -107,6 +109,38 @@ def res_stage_low(x, n_in, n_out, n, first_subsample, is_training, scope="res_st
         y = res_block_low(x, n_in, n_out, first_subsample, is_training, scope="block_1")
         for i in range(n - 1):
             y = res_block_low(y, n_out, n_out, False, is_training, scope="block_%d"%(i+2))
+    return y
+
+
+def res_block_high(x, n_hide, n_out, subsample, is_training, first_stride=2, scope="res_block"):
+    n_in = combined_static_and_dynamic_shape(x)[-1]
+    with tf.variable_scope(scope):
+        if subsample:
+            y = conv2d(x, n_in, n_hide, 1, first_stride, "SAME", False, scope="conv_1")  
+            shortcut = conv2d(x, n_in, n_out, 1, first_stride, "SAME", False, scope="shortcut")
+        else:
+            y = conv2d(x, n_in, n_hide, 1, 1, "SAME", False, scope="conv_1")
+            shortcut = tf.identity(x, name="shortcut")
+
+        y = batch_norm(y, n_hide, is_training, scope="bn_1")
+        y = tf.nn.relu(y, name="relu_1")
+
+        y = conv2d(y, n_hide, n_hide, 3, 1, "SAME", True, scope="conv_2")
+        y = batch_norm(y, n_hide, is_training, scope="bn_2")
+        y = tf.nn.relu(y, name="relu_2")
+
+        y = conv2d(y, n_hide, n_out, 1, 1, "SAME", True, scope="conv_3")
+        y = batch_norm(y, n_out, is_training, scope="bn_3")
+        y = y + shortcut
+        y = tf.nn.relu(y, name="relu_3")
+    return y
+
+
+def res_stage_high(x, n_hide, n_out, n, first_subsample, first_stride, is_training, scope="res_stage"):
+    with tf.variable_scope(scope):
+        y = res_block_high(x, n_hide, n_out, first_subsample, is_training, first_stride, scope="block_1")
+        for i in range(n - 1):
+            y = res_block_high(y, n_hide, n_out, False, is_training, 1, scope="block_%d"%(i+2))
     return y
 
 
@@ -138,17 +172,70 @@ def resnet34(x, n_classes, is_training, scope="resnet34"):
         y = res_stage_low(y,  64, 128, 4, True,  is_training, scope="stage_3")        # --> (b, 28, 28, 128)
         y = res_stage_low(y, 128, 256, 6, True,  is_training, scope="stage_4")        # --> (b, 14, 14, 256)
         y = res_stage_low(y, 256, 512, 3, True,  is_training, scope="stage_5")        # --> (b,  7,  7, 512)
+
         y = tf.layers.average_pooling2d(y, [7, 7], [1, 1], "VALID", name="avg_pool")  # --> (b, 1, 1, 512)
         y = tf.squeeze(y, [1, 2])  # --> (b, 512)
         y = fc(y, n_classes, scope="fc_final")  # --> (b, n_classes)
     return y
 
 
+def resnet50(x, n_classes, is_training, scope="resnet50"):
+    with tf.variable_scope(scope):
+        with tf.variable_scope("stage_1"):
+            y = conv2d(x, 3, 64, 7, 2, "SAME", True, scope="conv_2")
+            y = tf.layers.max_pooling2d(y, [3, 3], [2, 2], "SAME", name="max_pool_1")
+            y = tf.nn.relu(y, name="relu_1")
+
+        y = res_stage_high(y, 64,  256,  3, True, 1, is_training, scope="stage_2")
+        y = res_stage_high(y, 128, 512,  4, True, 2, is_training, scope="stage_3")
+        y = res_stage_high(y, 256, 1024, 6, True, 2, is_training, scope="stage_4")
+        y = res_stage_high(y, 512, 2048, 3, True, 2, is_training, scope="stage_5") 
+
+        y = tf.layers.average_pooling2d(y, [7, 7], [1, 1], "VALID", name="avg_pool")
+        y = tf.squeeze(y, [1, 2])
+        y = fc(y, n_classes, scope="fc_final")
+    return y
+
+
+def resnet101(x, n_classes, is_training, scope="resnet101"):
+    with tf.variable_scope(scope):
+        with tf.variable_scope("stage_1"):
+            y = conv2d(x, 3, 64, 7, 2, "SAME", True, scope="conv_2")
+            y = tf.layers.max_pooling2d(y, [3, 3], [2, 2], "SAME", name="max_pool_1")
+            y = tf.nn.relu(y, name="relu_1")
+
+        y = res_stage_high(y, 64,  256,  3,  True, 1, is_training, scope="stage_2")
+        y = res_stage_high(y, 128, 512,  4,  True, 2, is_training, scope="stage_3")
+        y = res_stage_high(y, 256, 1024, 23, True, 2, is_training, scope="stage_4")
+        y = res_stage_high(y, 512, 2048, 3,  True, 2, is_training, scope="stage_5") 
+
+        y = tf.layers.average_pooling2d(y, [7, 7], [1, 1], "VALID", name="avg_pool")
+        y = tf.squeeze(y, [1, 2])
+        y = fc(y, n_classes, scope="fc_final")
+    return y
+
+
+def resnet152(x, n_classes, is_training, scope="resnet101"):
+    with tf.variable_scope(scope):
+        with tf.variable_scope("stage_1"):
+            y = conv2d(x, 3, 64, 7, 2, "SAME", True, scope="conv_2")
+            y = tf.layers.max_pooling2d(y, [3, 3], [2, 2], "SAME", name="max_pool_1")
+            y = tf.nn.relu(y, name="relu_1")
+
+        y = res_stage_high(y, 64,  256,  3,  True, 1, is_training, scope="stage_2")
+        y = res_stage_high(y, 128, 512,  8,  True, 2, is_training, scope="stage_3")
+        y = res_stage_high(y, 256, 1024, 36, True, 2, is_training, scope="stage_4")
+        y = res_stage_high(y, 512, 2048, 3,  True, 2, is_training, scope="stage_5") 
+
+        y = tf.layers.average_pooling2d(y, [7, 7], [1, 1], "VALID", name="avg_pool")
+        y = tf.squeeze(y, [1, 2])
+        y = fc(y, n_classes, scope="fc_final")
+    return y
+
 
 
 if __name__ == "__main__":
     a = tf.constant(0.0, shape=[2, 224, 224, 3])
-    res18 = resnet18(a, 10, is_training=True)
-    res34 = resnet34(a, 10, is_training=True)
-    print(res34)
+    res = resnet152(a, 10, is_training=True)
+    print(res)
 
