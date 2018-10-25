@@ -1,4 +1,21 @@
 import tensorflow as tf
+import joblib
+
+
+meanstd_dict = joblib.load("./data/meanstd.pkl")
+
+
+def normalize_image(image):
+    mean, std = meanstd_dict["mean"], meanstd_dict["std"]
+    normed_image = (image - mean) / std
+    return normed_image
+
+
+def image_augmentation(image):
+    image = tf.image.pad_to_bounding_box(image, 4, 4, 40, 40)
+    image = tf.random_crop(image, [32, 32, 3])
+    image = tf.image.random_flip_left_right(image)
+    return image
 
 
 def train_input_fn():
@@ -14,11 +31,13 @@ def train_input_fn():
         image = tf.decode_raw(parsed["image_raw"], tf.uint8)
         image = tf.reshape(image, [32, 32, 3])
         image = tf.cast(image, tf.float32)
+        image = normalize_image(image)
+        image = image_augmentation(image)
         label = tf.cast(parsed["label"], tf.int32)
         return {"image": image}, label
 
     dataset = dataset.map(parser) 
-    dataset = dataset.shuffle(buffer_size=5000)
+    dataset = dataset.shuffle(buffer_size=10000)
     dataset = dataset.batch(32)
     dataset = dataset.repeat()
     iterator = dataset.make_one_shot_iterator()
@@ -39,6 +58,8 @@ def eval_input_fn():
         parsed = tf.parse_single_example(record, keys_to_features)
         image = tf.decode_raw(parsed["image_raw"], tf.uint8)
         image = tf.reshape(image, [32, 32, 3])
+        image = tf.cast(image, tf.float32)
+        image = normalize_image(image)
         label = tf.cast(parsed["label"], tf.int32)
         return {"image": image}, label
 

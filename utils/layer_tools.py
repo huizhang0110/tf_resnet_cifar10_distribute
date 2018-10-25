@@ -248,11 +248,3 @@ def resnet50_cifar10(x, n_classes, is_training, scope="resnet50_cifar10"):
         y = conv2d(y, 2048, n_classes, 1, 1, "SAME", True, scope="conv_classifier")
         y = tf.squeeze(y, [1, 2])
     return y
-
-
-if __name__ == "__main__":
-    # a = tf.constant(0.0, shape=[2, 224, 224, 3])
-    a = tf.constant(0.0, shape=[2, 32, 32, 3])
-    res = resnet50_cifar10(a, 10, is_training=True)
-    print(res)
-
