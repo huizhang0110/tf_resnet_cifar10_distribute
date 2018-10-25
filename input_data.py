@@ -38,7 +38,7 @@ def train_input_fn():
 
     dataset = dataset.map(parser) 
     dataset = dataset.shuffle(buffer_size=10000)
-    dataset = dataset.batch(32)
+    dataset = dataset.batch(64)
     dataset = dataset.repeat()
     iterator = dataset.make_one_shot_iterator()
 
@@ -64,7 +64,7 @@ def eval_input_fn():
         return {"image": image}, label
 
     dataset = dataset.map(parser)
-    dataset = dataset.batch(32)
+    dataset = dataset.batch(64)
     dataset = dataset.repeat(1)
     iterator = dataset.make_one_shot_iterator()
 
