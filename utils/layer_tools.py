@@ -215,7 +215,7 @@ def resnet101(x, n_classes, is_training, scope="resnet101"):
     return y
 
 
-def resnet152(x, n_classes, is_training, scope="resnet101"):
+def resnet152(x, n_classes, is_training, scope="resnet152"):
     with tf.variable_scope(scope):
         with tf.variable_scope("stage_1"):
             y = conv2d(x, 3, 64, 7, 2, "SAME", True, scope="conv_2")
@@ -233,9 +233,26 @@ def resnet152(x, n_classes, is_training, scope="resnet101"):
     return y
 
 
+def resnet50_cifar10(x, n_classes, is_training, scope="resnet50_cifar10"):
+    with tf.variable_scope(scope):
+        with tf.variable_scope("stage_1"):
+            y = conv2d(x, 3, 64, 3, 1, "SAME", True, scope="conv_2")
+            y = tf.layers.max_pooling2d(y, [3, 3], [2, 2], "SAME", name="max_pool_1")
+            y = tf.nn.relu(y, name="relu_1")
+
+        y = res_stage_high(y, 64,  256,  3,  True, 2, is_training, scope="stage_2")
+        y = res_stage_high(y, 128, 512,  4,  True, 2, is_training, scope="stage_3")
+        y = res_stage_high(y, 256, 1024, 6, True, 2, is_training, scope="stage_4")
+        y = res_stage_high(y, 512, 2048, 3,  True, 2, is_training, scope="stage_5") 
+
+        y = conv2d(y, 2048, n_classes, 1, 1, "SAME", True, scope="conv_classifier")
+        y = tf.squeeze(y, [1, 2])
+    return y
+
 
 if __name__ == "__main__":
-    a = tf.constant(0.0, shape=[2, 224, 224, 3])
-    res = resnet152(a, 10, is_training=True)
+    # a = tf.constant(0.0, shape=[2, 224, 224, 3])
+    a = tf.constant(0.0, shape=[2, 32, 32, 3])
+    res = resnet50_cifar10(a, 10, is_training=True)
     print(res)
 

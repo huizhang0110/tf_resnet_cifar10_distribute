@@ -1,2 +1,5 @@
 *.pkl
 */__pycache__/*
+__pycache__/*
+experiments/*
+*.tfrecord
