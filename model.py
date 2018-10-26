@@ -3,13 +3,25 @@ from utils import layer_tools
 
 
 flags = tf.app.flags
-flags.DEFINE_string("exp_dir", "experiments/cifar10_152", "")
-flags.DEFINE_string("data_dir", "data/cifar-10-batches-py", "")
 flags.DEFINE_integer("n_classes", 10, "")
-flags.DEFINE_integer("batch_size", 32, "")
-flags.DEFINE_float("weight_decay", 0.1, "")
+flags.DEFINE_float("weight_decay", 1e-4, "")
 FLAGS = flags.FLAGS
 
+
+def get_loss(logits, labels):
+    cross_entropy_loss = tf.losses.softmax_cross_entropy(onehot_labels=tf.one_hot(labels, depth=10), 
+            logits=logits, scope="cross_entropy_loss")
+
+    weight_l2_losses = [tf.nn.l2_loss(x) for x in tf.get_collection("weights")]
+    weight_decay_loss = tf.multiply(FLAGS.weight_decay, tf.add_n(weight_l2_losses), name="weight_decay_loss")
+    tf.add_to_collection(tf.GraphKeys.LOSSES, weight_decay_loss)
+
+    losses_list = tf.get_collection(tf.GraphKeys.LOSSES)
+    tf.logging.info("Losses Tensor: {}".format(losses_list))
+    for var in losses_list:
+        tf.summary.scalar("losses/" + var.op.name, var)
+    total_loss  = tf.add_n(losses_list)
+    return total_loss
 
 
 def model_fn(features, labels, mode, params):
@@ -22,8 +34,7 @@ def model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-    loss_tensor = tf.losses.softmax_cross_entropy(onehot_labels=tf.one_hot(labels, depth=10), 
-            logits=logits, scope="loss")
+    loss_tensor = get_loss(logits, labels)
     accuracy, update_op = tf.metrics.accuracy(labels=labels, 
             predictions=predictions["pred_classes"], name="accuracy")
 

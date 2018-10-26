@@ -6,7 +6,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 
 flags = tf.app.flags
-flags.DEFINE_string("model_dir", "experiments/image_aug", "")
+flags.DEFINE_string("model_dir", "experiments/image_aug_weight_decay", "")
 FLAGS = flags.FLAGS
 
 
