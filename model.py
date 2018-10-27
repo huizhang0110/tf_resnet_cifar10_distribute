@@ -41,7 +41,13 @@ def model_fn(features, labels, mode, params):
     # For Training mode
     if mode == tf.estimator.ModeKeys.TRAIN:
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        optimizer = tf.train.AdamOptimizer()
+        # optimizer = tf.train.AdamOptimizer()
+        boundaries = [200000, 400000]
+        learning_rates = [1.0, 0.1, 0.01]
+        learning_rate = tf.train.piecewise_constant(tf.train.get_global_step(), 
+                boundaries=boundaries, values=learning_rates)
+        tf.summary.scalar("lr", learning_rate)
+        optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(loss_tensor, tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss_tensor, train_op=train_op)
