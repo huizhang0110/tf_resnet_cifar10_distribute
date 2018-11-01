@@ -23,7 +23,7 @@ def combined_static_and_dynamic_shape(tensor):
 
 def get_weight(shape, trainable=True, name="weight", initializer=None):
     if initializer is None:
-        initializer = tf.contrib.layers.xavier_initializer()
+        initializer = tf.contrib.layers.variance_scaling_initializer()
     w = tf.get_variable(
         name=name,
         shape=shape,
@@ -239,13 +239,13 @@ def resnet50_cifar10(x, n_classes, is_training, scope="resnet50_cifar10"):
             x = conv2d(x, 3, 64, 7, 2, "SAME", True, scope="conv_init")
             x = tf.layers.batch_normalization(x, training=is_training)
             x = tf.nn.relu(x, name="relu_init")
-        x = tf.layers.max_pooling2d(x, [3, 3], [2, 2], "VALID", name="pool_init")
+        # x = tf.layers.max_pooling2d(x, [3, 3], [2, 2], "VALID", name="pool_init")
 
-        x = res_stage_high(x, 64,  256,  3,  True, 1, is_training, scope="stage_2")
+        x = res_stage_high(x, 64,  256,  3,  True, 2, is_training, scope="stage_2")
         x = res_stage_high(x, 128, 512,  4,  True, 2, is_training, scope="stage_3")
         x = res_stage_high(x, 256, 1024, 6, True, 2, is_training, scope="stage_4")
         x = res_stage_high(x, 512, 2048, 3,  True, 2, is_training, scope="stage_5") 
-
         x = conv2d(x, 2048, n_classes, 1, 1, "SAME", True, scope="conv_classifier")
+
         x = tf.squeeze(x, [1, 2])
     return x

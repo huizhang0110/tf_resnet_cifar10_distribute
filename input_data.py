@@ -42,8 +42,8 @@ def train_input_fn():
     dataset = dataset.repeat()
     iterator = dataset.make_one_shot_iterator()
 
-    feature_dict, labels = iterator.get_next()
-    return feature_dict, labels
+    # feature_dict, labels = iterator.get_next()
+    return dataset
 
 
 def eval_input_fn():
@@ -68,8 +68,7 @@ def eval_input_fn():
     dataset = dataset.repeat(1)
     iterator = dataset.make_one_shot_iterator()
 
-    feature_dict, labels = iterator.get_next()
-    return feature_dict, labels
+    return dataset
 
 
 if __name__ == "__main__":
